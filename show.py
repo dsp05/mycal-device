@@ -10,7 +10,6 @@ download()
 
 helper = DisplayHelper(1304, 984)
 
-
 black = Image.open('black-b.png')
 red = Image.open('red-b.png')
 
