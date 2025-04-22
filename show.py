@@ -1,9 +1,12 @@
+from blob import download
 import display.epd12in48b_V2 as eink
 from PIL import Image
 from dotenv import load_dotenv
 
 
 load_dotenv()
+
+download()
 
 black = Image.open('black-b.png')
 red = Image.open('red-b.png')
