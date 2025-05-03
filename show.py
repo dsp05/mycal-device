@@ -1,20 +1,33 @@
+import time
 from blob import download
 from PIL import Image
 from dotenv import load_dotenv
 from display.display import DisplayHelper
 import os
 
-load_dotenv()
+retry = 3
+durationInSeconds = 60
 
-download()
+while True:
+    try:
+        load_dotenv()
 
-helper = DisplayHelper(1304, 984)
+        download()
 
-black = Image.open('black-b.png')
-red = Image.open('red-b.png')
+        helper = DisplayHelper(1304, 984)
 
-helper.update(black, red)
+        black = Image.open('black-b.png')
+        red = Image.open('red-b.png')
 
-helper.sleep()
+        helper.update(black, red)
+
+        helper.sleep()
+    except Exception as e:
+        print(f"Error: {e}")
+        retry -= 1
+        if retry == 0:
+            break
+        time.sleep(durationInSeconds)
+        durationInSeconds *= 2
 
 os.system("sudo shutdown -h now")
