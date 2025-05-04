@@ -22,6 +22,8 @@ while True:
         helper.update(black, red)
 
         helper.sleep()
+
+        break
     except Exception as e:
         print(f"Error: {e}")
         retry -= 1
