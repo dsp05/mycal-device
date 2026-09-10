@@ -32,4 +32,4 @@ while True:
         time.sleep(durationInSeconds)
         durationInSeconds *= 2
 
-os.system("sudo shutdown -h now")
+# os.system("sudo shutdown -h now")
