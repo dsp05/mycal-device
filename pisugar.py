@@ -40,3 +40,25 @@ def schedule_next_wake(hours: float = 1.0) -> datetime:
         raise RuntimeError(f"pisugar-server rejected rtc_alarm_set: {response}")
 
     return next_wake
+
+
+def _get_value(key: str) -> str:
+    """Send a `get <key>` command and return the value portion of the
+    "key: value" response pisugar-server sends back."""
+    response = _send_command(f"get {key}")
+    if "error" in response.lower() or "fail" in response.lower():
+        raise RuntimeError(f"pisugar-server rejected 'get {key}': {response}")
+    # Response looks like "battery: 87.65" -- split on the first colon only,
+    # since some values (e.g. rtc_time) contain colons themselves.
+    _, _, value = response.partition(":")
+    return value.strip()
+
+
+def get_battery_percent() -> float:
+    """Return the current battery charge level as a percentage (0-100)."""
+    return float(_get_value("battery"))
+
+
+def get_battery_charging() -> bool:
+    """Return True if the PiSugar is currently charging (e.g. on USB power)."""
+    return _get_value("battery_charging").lower() == "true"
