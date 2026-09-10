@@ -38,18 +38,19 @@ while True:
 # Re-arm the PiSugar's RTC wakeup alarm *before* shutting down, regardless
 # of whether the refresh above succeeded -- if this fails, don't shut down:
 # a Pi with no alarm armed would sleep forever with no way to wake itself.
-# Re-arm the PiSugar's RTC wakeup alarm *before* shutting down, regardless
-# of whether the refresh above succeeded -- if this fails, don't shut down:
-# a Pi with no alarm armed would sleep forever with no way to wake itself.
 try:
     next_wake = schedule_next_wake(hours=WAKE_INTERVAL_HOURS)
     print(f"Next wake scheduled for {next_wake.isoformat()}")
 
     # Report battery status to blob storage so it can be checked remotely.
     # Non-fatal: a failure here shouldn't block shutdown/rescheduling.
+    # get_battery_percent()/get_battery_charging() never raise -- they
+    # return a -1.0/None sentinel on failure instead -- so a bad reading
+    # is reported as "unknown" rather than blocking this whole block.
     try:
+        battery_percent = get_battery_percent()
         status = {
-            "battery_percent": round(get_battery_percent(), 1),
+            "battery_percent": round(battery_percent, 1) if battery_percent >= 0 else None,
             "charging": get_battery_charging(),
             "reported_at": datetime.now(timezone.utc).isoformat(),
             "next_wake": next_wake.isoformat(),
