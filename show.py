@@ -79,5 +79,9 @@ except Exception as e:
     print(f"WARNING: failed to report status: {e}")
 
 if next_wake is not None:
-    os.system("sudo shutdown -h now")
+    # Temporarily disabled for debugging (device-status.json upload
+    # failure investigation) -- re-enable once resolved so the Pi goes
+    # back to shutting down between wake cycles to conserve battery.
+    # os.system("sudo shutdown -h now")
+    log("Shutdown skipped (debugging) -- staying awake")
 
