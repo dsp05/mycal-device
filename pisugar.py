@@ -146,3 +146,22 @@ def get_battery_charging() -> Optional[bool]:
     if token in ("true", "false"):
         return token == "true"
     return None
+
+
+# Must exactly match render.BATTERY_BUCKETS on the server -- the server
+# pre-renders one image variant per bucket, and this maps the Pi's own
+# battery reading to which bucket's variant to download.
+def battery_bucket(percent: float) -> str:
+    """Map a battery percent (or the -1.0 "unknown" sentinel from
+    get_battery_percent()) to the matching server-side bucket name."""
+    if percent is None or percent < 0:
+        return "unknown"
+    if percent < 20:
+        return "lt20"
+    if percent < 40:
+        return "20to40"
+    if percent < 60:
+        return "40to60"
+    if percent < 80:
+        return "60to80"
+    return "80to100"

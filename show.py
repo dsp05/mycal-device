@@ -3,7 +3,7 @@ from blob import download, upload_status
 from PIL import Image
 from dotenv import load_dotenv
 from display.display import DisplayHelper
-from pisugar import schedule_next_wake, get_battery_percent, get_battery_charging
+from pisugar import schedule_next_wake, get_battery_percent, get_battery_charging, battery_bucket
 from datetime import datetime, timezone
 import os
 
@@ -22,11 +22,18 @@ def log(message) -> None:
     log_lines.append(str(message))
 
 
+# Read the battery level *before* downloading -- the server pre-renders one
+# image variant per battery bucket (the Pi never renders), so which pair to
+# download depends on this reading.
+battery_percent = get_battery_percent()
+bucket = battery_bucket(battery_percent)
+log(f"Battery reading: {battery_percent if battery_percent >= 0 else 'unknown'} -> bucket={bucket}")
+
 while True:
     try:
         load_dotenv()
 
-        download()
+        download(bucket)
 
         helper = DisplayHelper(1304, 984)
 
@@ -60,13 +67,15 @@ except Exception as e:
 # Report status (battery + this run's log) to blob storage regardless of
 # whether scheduling succeeded above -- this is the only way to see what
 # went wrong on a run that couldn't even arm the next wakeup.
-# get_battery_percent()/get_battery_charging() never raise -- they return
-# a -1.0/None sentinel on failure instead -- so a bad reading is reported
-# as "unknown" rather than blocking this whole block.
+# get_battery_charging() never raises -- it returns None on failure -- so
+# a bad reading is reported as "unknown" rather than blocking this block.
+# battery_percent itself was already read at the top of this script (used
+# to pick which pre-rendered image bucket to download), so it's reused
+# here rather than read a second time.
 try:
-    battery_percent = get_battery_percent()
     status = {
         "battery_percent": round(battery_percent, 1) if battery_percent >= 0 else None,
+        "battery_bucket": bucket,
         "charging": get_battery_charging(),
         "reported_at": datetime.now(timezone.utc).isoformat(),
         "next_wake": next_wake.isoformat() if next_wake else None,
