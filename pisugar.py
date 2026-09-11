@@ -70,20 +70,23 @@ def _next_scheduled_wake(after: datetime) -> datetime:
 
 
 def schedule_next_wake() -> datetime:
-    """Arm a one-shot RTC wakeup alarm for the next qualifying slot on the
-    fixed daytime schedule and return that wakeup time (UTC). Raises on
-    any communication failure with pisugar-server so the caller can
-    decide how to handle it (the Pi should NOT be shut down if we failed
-    to arm the next wakeup, or it may never wake up again)."""
+    """Arm the RTC wakeup alarm for the next qualifying slot on the fixed
+    daytime schedule and return that wakeup time (UTC). Raises on any
+    communication failure with pisugar-server so the caller can decide
+    how to handle it (the Pi should NOT be shut down if we failed to
+    arm the next wakeup, or it may never wake up again)."""
     next_wake = _next_scheduled_wake(datetime.now(timezone.utc))
-    # pisugar-server expects milliseconds in the timestamp (it echoes
-    # alarm/rtc times back as e.g. "...T17:10:00.000-05:00") -- without
-    # them it silently fails to parse the date portion and falls back to
-    # 2000-01-01, while somehow still picking up the correct time-of-day.
-    iso_time = next_wake.isoformat(timespec="milliseconds")
+    iso_time = next_wake.isoformat(timespec="seconds")
 
-    # repeat=0 -- single-shot alarm, no weekday repeat.
-    response = _send_command(f"rtc_alarm_set {iso_time} 0")
+    # repeat=127 (all 7 weekdays) instead of 0: pisugar-server has a known
+    # bug where a one-shot alarm (repeat=0) silently fails to persist the
+    # date and reverts to a garbage value like 2000-01-01, so the alarm
+    # never actually fires. Using repeat=127 works around it -- since we
+    # always re-arm a fresh alarm on every wake before shutting down again,
+    # the daily-repeat behavior is harmless (it gets overwritten well
+    # before it would ever repeat), and it has the added benefit of still
+    # waking the Pi up even if a run crashes before it can re-arm.
+    response = _send_command(f"rtc_alarm_set {iso_time} 127")
     if "error" in response.lower() or "fail" in response.lower():
         raise RuntimeError(f"pisugar-server rejected rtc_alarm_set: {response}")
 
