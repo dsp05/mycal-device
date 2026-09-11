@@ -78,6 +78,5 @@ except Exception as e:
     print(f"WARNING: failed to report status: {e}")
 
 if next_wake is not None:
-    # os.system("sudo shutdown -h now")
-    log("Shutdown skipped (debugging) -- staying awake")
+    os.system("sudo shutdown -h now")
 
