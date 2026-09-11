@@ -20,12 +20,9 @@ PISUGAR_HOST = "127.0.0.1"
 PISUGAR_PORT = 8423
 SOCKET_TIMEOUT_SECONDS = 5
 
-# Wake schedule: every 2 hours during the day, at :10 past the hour, with
-# no overnight wakes (last wake 10:10 PM, next wake 6:10 AM -- covering
-# the requested 11 PM-5 AM quiet window and then some, since the display
-# doesn't need refreshing while everyone's asleep).
+# Wake schedule: twice a day, at :10 past 5 AM and 5 PM.
 _WAKE_TZ = ZoneInfo("America/Chicago")
-_WAKE_HOURS = (6, 8, 10, 12, 14, 16, 18, 20, 22)
+_WAKE_HOURS = (5, 17)
 _WAKE_MINUTE = 10
 
 
