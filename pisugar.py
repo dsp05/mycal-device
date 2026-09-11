@@ -4,19 +4,29 @@ to manage the PiSugar's single hardware RTC wakeup alarm.
 
 The RTC can only store one alarm at a time, and its "repeat" field is a
 weekday bitmask (not an hourly interval) -- so there's no native way to
-say "wake me up every hour". Instead, every time the Pi wakes up, it
-re-arms a fresh one-shot alarm for `now + interval` right before shutting
-down again, creating a self-perpetuating wake loop at whatever interval
-you choose.
+say "wake me up every N hours, but only during certain hours of the
+day". Instead, every time the Pi wakes up, it works out the next
+qualifying slot on a fixed daily schedule and re-arms a fresh one-shot
+alarm for that time right before shutting down again, creating a
+self-perpetuating wake loop.
 """
 import socket
 import subprocess
 from datetime import datetime, timedelta, timezone
 from typing import Optional
+from zoneinfo import ZoneInfo
 
 PISUGAR_HOST = "127.0.0.1"
 PISUGAR_PORT = 8423
 SOCKET_TIMEOUT_SECONDS = 5
+
+# Wake schedule: every 2 hours during the day, at :10 past the hour, with
+# no overnight wakes (last wake 10:10 PM, next wake 6:10 AM -- covering
+# the requested 11 PM-5 AM quiet window and then some, since the display
+# doesn't need refreshing while everyone's asleep).
+_WAKE_TZ = ZoneInfo("America/Chicago")
+_WAKE_HOURS = (6, 8, 10, 12, 14, 16, 18, 20, 22)
+_WAKE_MINUTE = 10
 
 
 def _send_command(command: str) -> str:
@@ -41,13 +51,34 @@ def _send_command(command: str) -> str:
     return buffer.decode("utf-8", errors="replace")
 
 
-def schedule_next_wake(hours: float = 1.0) -> datetime:
-    """Arm a one-shot RTC wakeup alarm `hours` from now (UTC) and return
-    that wakeup time. Raises on any communication failure with
-    pisugar-server so the caller can decide how to handle it (the Pi
-    should NOT be shut down if we failed to arm the next wakeup, or it
-    may never wake up again)."""
-    next_wake = datetime.now(timezone.utc) + timedelta(hours=hours)
+def _next_scheduled_wake(after: datetime) -> datetime:
+    """Return the next wake time (UTC, tz-aware) strictly after `after`,
+    following the fixed daytime-only schedule (see `_WAKE_HOURS` /
+    `_WAKE_MINUTE` above), expressed in America/Chicago local time."""
+    local_after = after.astimezone(_WAKE_TZ)
+    for day_offset in range(0, 3):  # plenty of headroom, only ever need 0 or 1
+        candidate_date = (local_after + timedelta(days=day_offset)).date()
+        for hour in _WAKE_HOURS:
+            candidate = datetime(
+                candidate_date.year,
+                candidate_date.month,
+                candidate_date.day,
+                hour,
+                _WAKE_MINUTE,
+                tzinfo=_WAKE_TZ,
+            )
+            if candidate > local_after:
+                return candidate.astimezone(timezone.utc)
+    raise RuntimeError("could not compute next scheduled wake time")
+
+
+def schedule_next_wake() -> datetime:
+    """Arm a one-shot RTC wakeup alarm for the next qualifying slot on the
+    fixed daytime schedule and return that wakeup time (UTC). Raises on
+    any communication failure with pisugar-server so the caller can
+    decide how to handle it (the Pi should NOT be shut down if we failed
+    to arm the next wakeup, or it may never wake up again)."""
+    next_wake = _next_scheduled_wake(datetime.now(timezone.utc))
     iso_time = next_wake.isoformat(timespec="seconds")
 
     # repeat=0 -- single-shot alarm, no weekday repeat.

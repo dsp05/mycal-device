@@ -9,7 +9,6 @@ import os
 
 retry = 3
 durationInSeconds = 60
-WAKE_INTERVAL_HOURS = 1
 
 # Collected alongside the usual stdout output and published as part of
 # this run's status blob, so what happened on a given wake cycle can be
@@ -53,7 +52,7 @@ while True:
 # a Pi with no alarm armed would sleep forever with no way to wake itself.
 next_wake = None
 try:
-    next_wake = schedule_next_wake(hours=WAKE_INTERVAL_HOURS)
+    next_wake = schedule_next_wake()
     log(f"Next wake scheduled for {next_wake.isoformat()}")
 except Exception as e:
     log(f"WARNING: failed to schedule next wake, staying awake: {e}")
@@ -79,5 +78,6 @@ except Exception as e:
     print(f"WARNING: failed to report status: {e}")
 
 if next_wake is not None:
-    os.system("sudo shutdown -h now")
+    # os.system("sudo shutdown -h now")
+    log("Shutdown skipped (debugging) -- staying awake")
 
