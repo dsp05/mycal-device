@@ -76,7 +76,11 @@ def schedule_next_wake() -> datetime:
     decide how to handle it (the Pi should NOT be shut down if we failed
     to arm the next wakeup, or it may never wake up again)."""
     next_wake = _next_scheduled_wake(datetime.now(timezone.utc))
-    iso_time = next_wake.isoformat(timespec="seconds")
+    # pisugar-server expects milliseconds in the timestamp (it echoes
+    # alarm/rtc times back as e.g. "...T17:10:00.000-05:00") -- without
+    # them it silently fails to parse the date portion and falls back to
+    # 2000-01-01, while somehow still picking up the correct time-of-day.
+    iso_time = next_wake.isoformat(timespec="milliseconds")
 
     # repeat=0 -- single-shot alarm, no weekday repeat.
     response = _send_command(f"rtc_alarm_set {iso_time} 0")
